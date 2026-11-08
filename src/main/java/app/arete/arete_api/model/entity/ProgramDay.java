@@ -73,14 +73,14 @@ public class ProgramDay extends Auditable {
     @BatchSize(size = Constants.MAX_PAGE_SIZE)
     @OneToMany(mappedBy = "programDay", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderIndex ASC")
-    private Set<WorkoutPart> parts = new LinkedHashSet<>();
+    private Set<ProgramPart> parts = new LinkedHashSet<>();
 
     /**
      * Adds the parts after the existing ones, in the given order.
      */
-    public void appendParts(final List<WorkoutPart> orderedParts) {
+    public void appendParts(final List<ProgramPart> orderedParts) {
         int orderIndex = this.parts.size();
-        for (final WorkoutPart part : orderedParts) {
+        for (final ProgramPart part : orderedParts) {
             part.setProgramDay(this);
             part.setOrderIndex(orderIndex++);
             this.parts.add(part);
@@ -90,19 +90,19 @@ public class ProgramDay extends Auditable {
     /**
      * Adds one part after the existing ones.
      */
-    public void addPart(final WorkoutPart part) {
+    public void addPart(final ProgramPart part) {
         appendParts(List.of(part));
     }
 
     /**
      * Replaces the planned content of a part; its position and feedback are kept.
      */
-    public WorkoutPart updatePart(
+    public ProgramPart updatePart(
             final Long partId,
             final String title,
             final String description,
             final Integer durationMinutes) {
-        final WorkoutPart part = getPart(partId);
+        final ProgramPart part = getPart(partId);
         part.setTitle(title);
         part.setDescription(description);
         part.setDurationMinutes(durationMinutes);
@@ -113,10 +113,10 @@ public class ProgramDay extends Auditable {
      * Removes a part and closes the gap it leaves in the order.
      */
     public void removePart(final Long partId) {
-        final WorkoutPart part = getPart(partId);
+        final ProgramPart part = getPart(partId);
         this.parts.remove(part);
         int orderIndex = 0;
-        for (final WorkoutPart remainingPart : this.parts) {
+        for (final ProgramPart remainingPart : this.parts) {
             remainingPart.setOrderIndex(orderIndex++);
         }
     }
@@ -125,16 +125,16 @@ public class ProgramDay extends Auditable {
      * Orders the parts as the given ids; the ids must be exactly the ids of this day's parts.
      */
     public void reorderParts(final List<Long> orderedPartIds) {
-        final Map<Long, WorkoutPart> partById = this.parts.stream()
-                .collect(Collectors.toMap(WorkoutPart::getId, Function.identity()));
+        final Map<Long, ProgramPart> partById = this.parts.stream()
+                .collect(Collectors.toMap(ProgramPart::getId, Function.identity()));
         if (orderedPartIds.size() != partById.size() || !partById.keySet().equals(Set.copyOf(orderedPartIds))) {
             throw new BadRequestException("The part ids must list every part of this day exactly once");
         }
-        final List<WorkoutPart> orderedParts = orderedPartIds.stream().map(partById::get).toList();
+        final List<ProgramPart> orderedParts = orderedPartIds.stream().map(partById::get).toList();
         this.parts.clear();
         this.parts.addAll(orderedParts);
         int orderIndex = 0;
-        for (final WorkoutPart orderedPart : orderedParts) {
+        for (final ProgramPart orderedPart : orderedParts) {
             orderedPart.setOrderIndex(orderIndex++);
         }
     }
@@ -145,8 +145,8 @@ public class ProgramDay extends Auditable {
     }
 
     public void givePartFeedback(final Long partId, final boolean completed, final String resultNotes) {
-        final WorkoutPart part = findPart(partId)
-                .orElseThrow(() -> new BadRequestException("Workout part %d isn't part of this day".formatted(partId)));
+        final ProgramPart part = findPart(partId)
+                .orElseThrow(() -> new BadRequestException("Program part %d isn't part of this day".formatted(partId)));
         part.giveFeedback(completed, resultNotes);
     }
 
@@ -156,15 +156,15 @@ public class ProgramDay extends Auditable {
     public void moveTo(final LocalDate newDate) {
         this.dayDate = newDate;
         giveFeedback(DayStatus.PLANNED, null);
-        this.parts.forEach(WorkoutPart::clearFeedback);
+        this.parts.forEach(ProgramPart::clearFeedback);
     }
 
-    private WorkoutPart getPart(final Long partId) {
+    private ProgramPart getPart(final Long partId) {
         return findPart(partId)
-                .orElseThrow(() -> new NotFoundException("Workout part %d not found on this day".formatted(partId)));
+                .orElseThrow(() -> new NotFoundException("Program part %d not found on this day".formatted(partId)));
     }
 
-    private Optional<WorkoutPart> findPart(final Long partId) {
+    private Optional<ProgramPart> findPart(final Long partId) {
         return this.parts.stream()
                 .filter(candidate -> candidate.getId().equals(partId))
                 .findFirst();

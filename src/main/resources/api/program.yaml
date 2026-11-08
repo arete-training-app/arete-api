@@ -3,7 +3,7 @@ info:
   title: Arete API - training programs
   description: >
     The signed-in user's training programs. A program is a plan of dated days: each date holds its own ordered
-    workout parts, and a date without a day is a rest day. After training, the user gives feedback on each day:
+    program parts, and a date without a day is a rest day. After training, the user gives feedback on each day:
     completed or skipped, with notes and per-part results.
   version: 1.0.0
 
@@ -36,11 +36,11 @@ paths:
           in: query
           required: false
           description: Only programs whose name contains this text, ignoring case.
+          # No example: Swagger UI pre-fills it, which would silently filter the list
           schema:
             type: string
             minLength: 1
             maxLength: 100
-          example: elite
         - name: createdFrom
           in: query
           required: false
@@ -69,7 +69,7 @@ paths:
     post:
       tags: [Program]
       summary: Create a program
-      description: Creates an empty training program owned by the caller. Plan its days by adding workout parts with POST /programs/{programId}/days/{date}/parts.
+      description: Creates an empty training program owned by the caller. Plan its days by adding program parts with POST /programs/{programId}/days/{date}/parts.
       operationId: createProgram
       requestBody:
         required: true
@@ -253,7 +253,7 @@ paths:
     get:
       tags: [ProgramDay]
       summary: Get a program day
-      description: Returns the planned day of one date, with its workout parts in order.
+      description: Returns the planned day of one date, with its program parts in order.
       operationId: getProgramDay
       responses:
         '200':
@@ -269,7 +269,7 @@ paths:
     delete:
       tags: [ProgramDay]
       summary: Delete a program day
-      description: Removes the plan of this date with all its workout parts, making it a rest day.
+      description: Removes the plan of this date with all its program parts, making it a rest day.
       operationId: deleteProgramDay
       responses:
         '204':
@@ -286,25 +286,25 @@ paths:
       - $ref: '#/components/parameters/ProgramId'
       - $ref: '#/components/parameters/DayDate'
     post:
-      tags: [WorkoutPart]
-      summary: Add a workout part to a program day
+      tags: [ProgramPart]
+      summary: Add a program part to a program day
       description: >
-        Adds a workout part after the existing parts of this date. If the date is a rest day, it becomes a planned day
+        Adds a program part after the existing parts of this date. If the date is a rest day, it becomes a planned day
         with this part. A day holds at most a configured number of parts.
-      operationId: createWorkoutPart
+      operationId: createProgramPart
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkoutPartRequest'
+              $ref: '#/components/schemas/ProgramPartRequest'
       responses:
         '201':
-          description: The created workout part.
+          description: The created program part.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkoutPartResponse'
+                $ref: '#/components/schemas/ProgramPartResponse'
         '400':
           $ref: './common.yaml#/components/responses/BadRequest'
         '401':
@@ -321,17 +321,17 @@ paths:
       - $ref: '#/components/parameters/ProgramId'
       - $ref: '#/components/parameters/DayDate'
     post:
-      tags: [WorkoutPart]
-      summary: Reorder the workout parts of a program day
+      tags: [ProgramPart]
+      summary: Reorder the program parts of a program day
       description: >
         Sets the order of the day's parts to the order of `partIds`, which must list every part of the day exactly once.
-      operationId: reorderWorkoutParts
+      operationId: reorderProgramParts
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReorderWorkoutPartsRequest'
+              $ref: '#/components/schemas/ReorderProgramPartsRequest'
       responses:
         '200':
           description: The day with its parts in the new order.
@@ -352,26 +352,26 @@ paths:
     parameters:
       - $ref: '#/components/parameters/ProgramId'
       - $ref: '#/components/parameters/DayDate'
-      - $ref: '#/components/parameters/WorkoutPartId'
+      - $ref: '#/components/parameters/ProgramPartId'
     put:
-      tags: [WorkoutPart]
-      summary: Update a workout part
+      tags: [ProgramPart]
+      summary: Update a program part
       description: >
-        Replaces the title, description and duration of one workout part. Its position and its feedback are kept.
-      operationId: updateWorkoutPart
+        Replaces the title, description and duration of one program part. Its position and its feedback are kept.
+      operationId: updateProgramPart
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkoutPartRequest'
+              $ref: '#/components/schemas/ProgramPartRequest'
       responses:
         '200':
-          description: The updated workout part.
+          description: The updated program part.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkoutPartResponse'
+                $ref: '#/components/schemas/ProgramPartResponse'
         '400':
           $ref: './common.yaml#/components/responses/BadRequest'
         '401':
@@ -381,15 +381,15 @@ paths:
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
     delete:
-      tags: [WorkoutPart]
-      summary: Delete a workout part
+      tags: [ProgramPart]
+      summary: Delete a program part
       description: >
-        Removes one workout part; the parts after it move up. Deleting the last part of a day also deletes the day,
+        Removes one program part; the parts after it move up. Deleting the last part of a day also deletes the day,
         making the date a rest day.
-      operationId: deleteWorkoutPart
+      operationId: deleteProgramPart
       responses:
         '204':
-          description: The workout part was deleted.
+          description: The program part was deleted.
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -405,7 +405,7 @@ paths:
       tags: [ProgramDay]
       summary: Give feedback on a program day
       description: >
-        Saves the user's feedback on how the day went: its status, notes and the result of each listed workout part.
+        Saves the user's feedback on how the day went: its status, notes and the result of each listed program part.
         Parts that aren't listed keep their feedback. The plan itself isn't changed. A day can only be completed on
         or before today.
       operationId: updateProgramDayFeedback
@@ -483,7 +483,7 @@ components:
         type: integer
         format: int64
       example: 1
-    WorkoutPartId:
+    ProgramPartId:
       name: partId
       in: path
       required: true
@@ -564,7 +564,7 @@ components:
       enum: [NAME, CREATED_AT, UPDATED_AT]
       default: CREATED_AT
 
-    ReorderWorkoutPartsRequest:
+    ReorderProgramPartsRequest:
       type: object
       required: [partIds]
       properties:
@@ -577,7 +577,7 @@ components:
             format: int64
           example: [3, 1, 2]
 
-    WorkoutPartRequest:
+    ProgramPartRequest:
       type: object
       required: [title]
       properties:
@@ -610,16 +610,16 @@ components:
           type: array
           maxItems: 20
           items:
-            $ref: '#/components/schemas/WorkoutPartFeedbackRequest'
+            $ref: '#/components/schemas/ProgramPartFeedbackRequest'
 
-    WorkoutPartFeedbackRequest:
+    ProgramPartFeedbackRequest:
       type: object
       required: [partId, completed]
       properties:
         partId:
           type: integer
           format: int64
-          description: A workout part of this day.
+          description: A program part of this day.
           example: 1
         completed:
           type: boolean
@@ -660,9 +660,9 @@ components:
         parts:
           type: array
           items:
-            $ref: '#/components/schemas/WorkoutPartResponse'
+            $ref: '#/components/schemas/ProgramPartResponse'
 
-    WorkoutPartResponse:
+    ProgramPartResponse:
       type: object
       required: [id, title, completed]
       properties:

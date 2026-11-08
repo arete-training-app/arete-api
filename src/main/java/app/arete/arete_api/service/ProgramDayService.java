@@ -58,7 +58,7 @@ public interface ProgramDayService {
             final ProgramDayFilterDto programDayFilterDto);
 
     /**
-     * Returns the day planned on one date, with its workout parts in order.
+     * Returns the day planned on one date, with its program parts in order.
      *
      * @param programId the program id
      * @param date      the date of the day
@@ -68,7 +68,7 @@ public interface ProgramDayService {
     ProgramDayResponseDto getUserProgramDay(final Long programId, final LocalDate date);
 
     /**
-     * Deletes the day planned on one date with all its workout parts, making it a rest day.
+     * Deletes the day planned on one date with all its program parts, making it a rest day.
      *
      * @param programId the program id
      * @param date      the date of the day
@@ -77,7 +77,7 @@ public interface ProgramDayService {
     void deleteUserProgramDay(final Long programId, final LocalDate date);
 
     /**
-     * Saves the user's feedback on how a day went: its status, notes and the results of the listed workout parts.
+     * Saves the user's feedback on how a day went: its status, notes and the results of the listed program parts.
      * Parts that aren't listed keep their feedback, and the plan itself isn't changed.
      *
      * @param programId                    the program id
@@ -112,7 +112,7 @@ public interface ProgramDayService {
             final MoveProgramDayRequestDto moveProgramDayRequestDto);
 
     /**
-     * Returns the entity of the day planned on one date, for other services that change its workout parts.
+     * Returns the entity of the day planned on one date, for other services that change its program parts.
      *
      * @param programId the program id
      * @param date      the date of the day

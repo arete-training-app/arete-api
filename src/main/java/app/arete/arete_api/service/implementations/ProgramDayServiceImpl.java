@@ -8,7 +8,7 @@ import app.arete.arete_api.api.model.ProgramDayPageResponseDto;
 import app.arete.arete_api.api.model.ProgramDayResponseDto;
 import app.arete.arete_api.api.model.ProgramDaySortFieldDto;
 import app.arete.arete_api.api.model.SortDirectionDto;
-import app.arete.arete_api.api.model.WorkoutPartFeedbackRequestDto;
+import app.arete.arete_api.api.model.ProgramPartFeedbackRequestDto;
 import app.arete.arete_api.config.properties.ProgramProperties;
 import app.arete.arete_api.exception.BadRequestException;
 import app.arete.arete_api.exception.ConflictException;
@@ -25,6 +25,7 @@ import app.arete.arete_api.specification.ProgramDaySpecifications;
 import app.arete.arete_api.util.PaginationUtils;
 import app.arete.arete_api.util.enums.DayStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProgramDayServiceImpl implements ProgramDayService {
@@ -59,6 +61,7 @@ public class ProgramDayServiceImpl implements ProgramDayService {
             final Long programId,
             final LocalDate from,
             final LocalDate to) {
+        log.debug("Getting the calendar of program {} from {} to {}", programId, from, to);
         validateCalendarRange(from, to);
         final Program program = programService.getUserProgramEntity(programId);
         final Map<LocalDate, ProgramDay> dayByDate = programDayRepository
@@ -79,6 +82,8 @@ public class ProgramDayServiceImpl implements ProgramDayService {
             final ProgramDaySortFieldDto sort,
             final SortDirectionDto direction,
             final ProgramDayFilterDto programDayFilterDto) {
+        log.debug("Listing days of program {}: page {}, size {}, sort {} {}, filter {}",
+                programId, page, size, sort, direction, programDayFilterDto);
         validateFilterRange(programDayFilterDto);
         final Program program = programService.getUserProgramEntity(programId);
         final Pageable pageable = PaginationUtils.toPageRequest(
@@ -94,13 +99,17 @@ public class ProgramDayServiceImpl implements ProgramDayService {
     @Override
     @Transactional(readOnly = true)
     public ProgramDayResponseDto getUserProgramDay(final Long programId, final LocalDate date) {
+        log.debug("Getting the day of program {} on {}", programId, date);
         return programDayMapper.toProgramDayResponseDto(getUserProgramDayEntity(programId, date));
     }
 
     @Override
     @Transactional
     public void deleteUserProgramDay(final Long programId, final LocalDate date) {
-        programDayRepository.delete(getUserProgramDayEntity(programId, date));
+        final ProgramDay programDay = getUserProgramDayEntity(programId, date);
+        final int partCount = programDay.getParts().size();
+        programDayRepository.delete(programDay);
+        log.info("Program {}: day {} deleted with its {} part(s)", programId, date, partCount);
     }
 
     @Override
@@ -115,13 +124,16 @@ public class ProgramDayServiceImpl implements ProgramDayService {
         }
         final ProgramDay programDay = getUserProgramDayEntity(programId, date);
         programDay.giveFeedback(status, programDayFeedbackRequestDto.getNotes());
-        for (final WorkoutPartFeedbackRequestDto partFeedback : programDayFeedbackRequestDto.getParts()) {
+        for (final ProgramPartFeedbackRequestDto partFeedback : programDayFeedbackRequestDto.getParts()) {
             programDay.givePartFeedback(
                     partFeedback.getPartId(),
                     partFeedback.getCompleted(),
                     partFeedback.getResultNotes());
         }
-        return programDayMapper.toProgramDayResponseDto(programDayRepository.save(programDay));
+        final ProgramDay savedProgramDay = programDayRepository.save(programDay);
+        log.info("Program {}: feedback on {} saved, status {}, {} part result(s)",
+                programId, date, status, programDayFeedbackRequestDto.getParts().size());
+        return programDayMapper.toProgramDayResponseDto(savedProgramDay);
     }
 
     @Override
@@ -142,11 +154,16 @@ public class ProgramDayServiceImpl implements ProgramDayService {
                 programDayRepository.findByProgramIdAndDayDate(sourceDay.getProgram().getId(), toDate);
         if (targetDay.isEmpty()) {
             sourceDay.moveTo(toDate);
-            return programDayMapper.toProgramDayResponseDto(programDayRepository.saveAndFlush(sourceDay));
+            final ProgramDay movedDay = programDayRepository.saveAndFlush(sourceDay);
+            log.info("Program {}: day {} moved to {}", programId, date, toDate);
+            return programDayMapper.toProgramDayResponseDto(movedDay);
         }
-        targetDay.get().appendParts(programDayMapper.copyWorkoutParts(sourceDay.getParts()));
+        targetDay.get().appendParts(programDayMapper.copyProgramParts(sourceDay.getParts()));
         programDayRepository.delete(sourceDay);
-        return programDayMapper.toProgramDayResponseDto(programDayRepository.saveAndFlush(targetDay.get()));
+        final ProgramDay mergedDay = programDayRepository.saveAndFlush(targetDay.get());
+        log.info("Program {}: day {} merged into {}, which now has {} part(s)",
+                programId, date, toDate, mergedDay.getParts().size());
+        return programDayMapper.toProgramDayResponseDto(mergedDay);
     }
 
     @Override

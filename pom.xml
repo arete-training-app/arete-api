@@ -251,6 +251,32 @@
 						</configOptions>
 					</configuration>
 				</execution>
+				<execution>
+					<id>generate-program-template-api</id>
+					<goals>
+						<goal>generate</goal>
+					</goals>
+					<configuration>
+						<inputSpec>${project.basedir}/src/main/resources/api/program-template.yaml</inputSpec>
+						<generatorName>spring</generatorName>
+						<apiPackage>app.arete.arete_api.api</apiPackage>
+						<modelPackage>app.arete.arete_api.api.model</modelPackage>
+						<modelNameSuffix>Dto</modelNameSuffix>
+						<configOptions>
+							<useSpringBoot3>true</useSpringBoot3>
+							<useJakartaEe>true</useJakartaEe>
+							<interfaceOnly>true</interfaceOnly>
+							<useTags>true</useTags>
+							<useBeanValidation>true</useBeanValidation>
+							<performBeanValidation>true</performBeanValidation>
+							<openApiNullable>false</openApiNullable>
+							<generatedConstructorWithRequiredArgs>false</generatedConstructorWithRequiredArgs>
+							<documentationProvider>none</documentationProvider>
+							<annotationLibrary>none</annotationLibrary>
+							<skipDefaultInterface>true</skipDefaultInterface>
+						</configOptions>
+					</configuration>
+				</execution>
 			</executions>
 		</plugin>
 		<plugin>

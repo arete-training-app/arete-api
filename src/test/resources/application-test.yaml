@@ -4,3 +4,10 @@ arete:
     secret: dGVzdC1zZWNyZXQtZm9yLWFyZXRlLWFwaS10ZXN0cy1vbmx5LW5vdC1mb3ItcHJvZA==
   google:
     client-id: test-google-client-id
+  # Tests write their own entries, each under a unique name; removed by mvn clean
+  program-template:
+    catalog:
+      directory: ./target/test-catalog
+  # Tests run the import worker themselves, so its timing is deterministic
+  import-job:
+    polling-enabled: false

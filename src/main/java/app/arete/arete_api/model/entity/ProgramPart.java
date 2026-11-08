@@ -15,14 +15,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Table(name = "workout_part", schema = "public")
+@Table(name = "program_part", schema = "public")
 @Getter
 @Setter
 @Builder
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-public class WorkoutPart {
+public class ProgramPart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

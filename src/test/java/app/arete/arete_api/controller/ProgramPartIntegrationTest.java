@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
-class WorkoutPartIntegrationTest extends AbstractProgramIntegrationTest {
+class ProgramPartIntegrationTest extends AbstractProgramIntegrationTest {
 
     private static final int MAX_PARTS_PER_DAY = 20;
 

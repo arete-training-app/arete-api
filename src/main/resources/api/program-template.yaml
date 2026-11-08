@@ -1,0 +1,592 @@
+openapi: 3.0.3
+info:
+  title: Arete API - program templates
+  description: >
+    Admin-only program templates: training programs without an owner, made of days at a relative position
+    (day 1, day 2, ...) instead of a calendar date. A position without a day is an uncovered day. Templates are
+    the raw material that gets adapted into users' own programs. They are imported from a catalog of server folders
+    in the background: starting an import job for a catalog entry queues it, a worker polling the queue reads the
+    entry's files and creates the template, and the job's progress tells when the template is ready.
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+security:
+  - cookieAuth: []
+
+paths:
+  /admin/program-templates:
+    get:
+      tags: [ProgramTemplate]
+      summary: List program templates
+      description: >
+        Returns one page of program templates, newest first unless another sort is requested.
+        Filters are optional and combined with AND.
+      operationId: getProgramTemplates
+      parameters:
+        - $ref: './common.yaml#/components/parameters/Page'
+        - $ref: './common.yaml#/components/parameters/Size'
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by.
+          schema:
+            $ref: '#/components/schemas/ProgramTemplateSortField'
+        - $ref: './common.yaml#/components/parameters/Direction'
+        - name: name
+          in: query
+          required: false
+          description: Only templates whose name contains this text, ignoring case.
+          # No example: Swagger UI pre-fills it, which would silently filter the list
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        '200':
+          description: One page of program templates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplatePageResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+  /admin/program-templates/import-jobs:
+    get:
+      tags: [ProgramTemplateImportJob]
+      summary: List program template import jobs
+      description: >
+        Returns one page of import jobs, newest first unless another sort is requested: the ones still queued or
+        running, and the finished ones with the template they created or the reason they failed.
+      operationId: getProgramTemplateImportJobs
+      parameters:
+        - $ref: './common.yaml#/components/parameters/Page'
+        - $ref: './common.yaml#/components/parameters/Size'
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by.
+          schema:
+            $ref: '#/components/schemas/ProgramTemplateImportJobSortField'
+        - $ref: './common.yaml#/components/parameters/Direction'
+        - name: status
+          in: query
+          required: false
+          description: Only import jobs with this status.
+          schema:
+            $ref: '#/components/schemas/ProgramTemplateImportJobStatus'
+        - name: catalogEntry
+          in: query
+          required: false
+          description: Only import jobs of this catalog entry.
+          # Same rule as CatalogEntryName, inlined without its example: Swagger UI pre-fills it, which would
+          # silently filter the list
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9 _-]{1,100}$'
+      responses:
+        '200':
+          description: One page of import jobs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplateImportJobPageResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+    post:
+      tags: [ProgramTemplateImportJob]
+      summary: Start a program template import job
+      description: >
+        Queues an import job for a catalog entry, without reading its files. A background worker watches the queue
+        and picks the job up within a few seconds: it reads the entry's day files, checks them and creates the
+        template, named after the entry. Follow the returned job (also linked in the `Location` header) to learn
+        when the template is ready, or why it failed: an invalid file, a blocked term, or days that were already
+        imported, whatever the template is called.
+      operationId: importProgramTemplateJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramTemplateImportJobRequest'
+      responses:
+        '202':
+          description: The queued import job.
+          headers:
+            Location:
+              description: The import job's URL.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplateImportJobResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /admin/program-templates/catalog:
+    get:
+      tags: [ProgramTemplate]
+      summary: List the program template catalog
+      description: >
+        Returns one page of the templates that can be imported, ordered by name, each with its number of day files
+        and its latest import job, if any. The catalog is a server folder configured per environment and filled by a
+        separate converting service: one subfolder per template, holding one day file per date, as
+        described in program-template-day-file.schema.json. Subfolders of a template, other files, and folders
+        whose name contains a dot (such as one still being written) are ignored.
+      operationId: getProgramTemplateCatalog
+      parameters:
+        - $ref: './common.yaml#/components/parameters/Page'
+        - $ref: './common.yaml#/components/parameters/Size'
+        - name: name
+          in: query
+          required: false
+          description: Only entries whose name contains this text, ignoring case.
+          # No example: Swagger UI pre-fills it, which would silently filter the list
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        '200':
+          description: One page of catalog entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplateCatalogPageResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+  /admin/program-templates/import-jobs/{importJobId}:
+    parameters:
+      - name: importJobId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+    get:
+      tags: [ProgramTemplateImportJob]
+      summary: Get a program template import job
+      description: >
+        Returns the progress of one import job. Once it is `COMPLETED`, `programTemplateId` is the template it
+        created; once it is `FAILED`, `error` says why.
+      operationId: getProgramTemplateImportJob
+      responses:
+        '200':
+          description: The import job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplateImportJobResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /admin/program-templates/{programTemplateId}:
+    parameters:
+      - $ref: '#/components/parameters/ProgramTemplateId'
+    get:
+      tags: [ProgramTemplate]
+      summary: Get a program template
+      description: Returns one program template, without its days.
+      operationId: getProgramTemplate
+      responses:
+        '200':
+          description: The program template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplateResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+    delete:
+      tags: [ProgramTemplate]
+      summary: Delete a program template
+      description: Permanently deletes a program template together with all its days.
+      operationId: deleteProgramTemplate
+      responses:
+        '204':
+          description: The program template was deleted.
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /admin/program-templates/{programTemplateId}/days:
+    parameters:
+      - $ref: '#/components/parameters/ProgramTemplateId'
+    get:
+      tags: [ProgramTemplate]
+      summary: Get a period of a program template
+      description: >
+        Returns the days from `fromDay` to `toDay` (both inclusive) in position order. A position in the range
+        without a day isn't in the list: it is uncovered. The range is limited to a configured number of days.
+      operationId: getProgramTemplateDays
+      parameters:
+        - name: fromDay
+          in: query
+          required: true
+          description: First position of the range.
+          schema:
+            type: integer
+            minimum: 1
+          example: 15
+        - name: toDay
+          in: query
+          required: true
+          description: Last position of the range, not before `fromDay`.
+          schema:
+            type: integer
+            minimum: 1
+          example: 42
+      responses:
+        '200':
+          description: The covered days of the range.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProgramTemplateDayResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /admin/program-templates/{programTemplateId}/programs:
+    parameters:
+      - $ref: '#/components/parameters/ProgramTemplateId'
+    post:
+      tags: [ProgramTemplate]
+      summary: Create a program from a program template
+      description: >
+        Creates a program owned by the caller with a copy of every day of the template and its parts as program
+        parts, all planned and without feedback. Day 1 lands in the week of `startWeek`, on the same weekday as in
+        the source, and the other days keep their distance from it: every workout keeps its weekday and positions
+        without a day stay empty. Pass the template's `originalStartDate` to replay the source's real dates. The program is independent of the template afterwards.
+      operationId: createProgramFromTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramFromTemplateRequest'
+      responses:
+        '201':
+          description: The created program.
+          headers:
+            Location:
+              description: The program's URL.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: './program.yaml#/components/schemas/ProgramResponse'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+
+  parameters:
+    ProgramTemplateId:
+      name: programTemplateId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      example: 1
+
+  schemas:
+    CatalogEntryName:
+      type: string
+      description: >
+        The name of a catalog entry: a folder of the catalog, which is also the imported template's name. Letters,
+        digits, spaces, `_` and `-` only.
+      pattern: '^[A-Za-z0-9 _-]{1,100}$'
+      example: Strength Block
+
+    ProgramTemplateImportJobRequest:
+      type: object
+      required: [catalogEntry]
+      properties:
+        catalogEntry:
+          $ref: '#/components/schemas/CatalogEntryName'
+
+    ProgramTemplateCatalogEntryResponse:
+      type: object
+      required: [name, dayFileCount]
+      properties:
+        name:
+          type: string
+          example: Strength Block
+        dayFileCount:
+          type: integer
+          description: How many day files the entry holds.
+          example: 80
+        latestImportJob:
+          $ref: '#/components/schemas/ProgramTemplateImportJobResponse'
+
+    ProgramTemplateCatalogPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramTemplateCatalogEntryResponse'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 3
+        totalPages:
+          type: integer
+          example: 1
+
+    ProgramTemplateResponse:
+      type: object
+      required: [id, name, dayCount, weekCount, lastPosition, originalStartDate]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Strength Block
+        description:
+          type: string
+          example: Twelve weeks of strength-led training.
+        dayCount:
+          type: integer
+          description: Number of covered days.
+          example: 80
+        lastPosition:
+          type: integer
+          description: Position of the last covered day.
+          example: 84
+        weekCount:
+          type: integer
+          description: Number of Monday-to-Sunday weeks up to the last covered day, partial first week included.
+          example: 12
+        originalStartDate:
+          type: string
+          format: date
+          description: The date of day 1 in the source day files.
+          example: '2026-01-05'
+        createdAt:
+          type: string
+          format: date-time
+
+    ProgramFromTemplateRequest:
+      type: object
+      required: [name, startWeek]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Compete trial
+        description:
+          type: string
+          maxLength: 1000
+          description: Defaults to the template's description.
+          example: Eight days of competition prep.
+        startWeek:
+          type: string
+          format: date
+          description: >
+            Any date in the week that becomes the program's first week. Day 1 lands on the same weekday as in the
+            source, so every workout keeps its weekday. Pass the template's `originalStartDate` to replay the
+            source's real dates.
+          example: '2026-11-09'
+
+    ProgramTemplatePageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramTemplateResponse'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 3
+        totalPages:
+          type: integer
+          example: 1
+
+    ProgramTemplateSortField:
+      type: string
+      enum: [NAME, CREATED_AT, DAY_COUNT]
+      default: CREATED_AT
+
+    ProgramTemplateDayResponse:
+      type: object
+      required: [position, week, dayOfWeek, parts]
+      properties:
+        position:
+          type: integer
+          example: 16
+        week:
+          type: integer
+          description: >
+            1-based Monday-to-Sunday week the day falls in, as in the source; the source's first week counts as
+            week 1 even if it started mid-week.
+          example: 3
+        dayOfWeek:
+          $ref: './program.yaml#/components/schemas/DayOfWeek'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramTemplatePartResponse'
+
+    ProgramTemplatePartResponse:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: Lower body strength
+        description:
+          type: string
+          example: Back squat 5x5, Romanian deadlift 3x8, walking lunges 3x12.
+        durationMinutes:
+          type: integer
+          example: 60
+
+    ProgramTemplateImportJobResponse:
+      type: object
+      required: [id, catalogEntry, status, attempts]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 12
+        catalogEntry:
+          type: string
+          description: The catalog entry being imported.
+          example: Strength Block
+        status:
+          $ref: '#/components/schemas/ProgramTemplateImportJobStatus'
+        attempts:
+          type: integer
+          description: How many times the job has been started; temporary failures are retried.
+          example: 1
+        programTemplateId:
+          type: integer
+          format: int64
+          description: The template the job created; present once it is completed.
+          example: 7
+        error:
+          type: string
+          description: Why the last attempt failed.
+          example: 2026-01-18.json is invalid; parts must not be empty
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          description: When the job completed or failed for good.
+
+    ProgramTemplateImportJobPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramTemplateImportJobResponse'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 3
+        totalPages:
+          type: integer
+          example: 1
+
+    ProgramTemplateImportJobSortField:
+      type: string
+      enum: [CREATED_AT, UPDATED_AT]
+      default: CREATED_AT
+
+    ProgramTemplateImportJobStatus:
+      type: string
+      description: >
+        PENDING: queued, waiting for its first attempt or for a retry. PROCESSING: being imported.
+        COMPLETED: the template exists. FAILED: it won't be retried.
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED]

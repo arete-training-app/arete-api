@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 @Getter
 @RequiredArgsConstructor
-public enum Endpoints {
+public enum PublicEndpoints {
     /**
      * Public endpoints, relative to the servlet context path. Everything else requires a valid access token.
      */
@@ -28,7 +28,7 @@ public enum Endpoints {
     private final String value;
 
     public static String[] patterns() {
-        return Arrays.stream(values()).map(Endpoints::getValue).toArray(String[]::new);
+        return Arrays.stream(values()).map(PublicEndpoints::getValue).toArray(String[]::new);
     }
 
     public static boolean isPublic(final String path) {

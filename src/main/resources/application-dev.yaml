@@ -10,6 +10,15 @@ arete:
   jwt:
     cookie:
       secure: false
+  program-template:
+    catalog:
+      # Resolved from the working directory like the dev/.env import above, so run from arete-api/; git-ignored
+      directory: ${PROGRAM_TEMPLATE_CATALOG_DIRECTORY:./dev/catalog}
+
+logging:
+  level:
+    # Debug for the app's own code shows every read a service does; frameworks stay at info
+    app.arete.arete_api: DEBUG
 
 springdoc:
   api-docs:
@@ -23,5 +32,7 @@ springdoc:
         url: ${server.servlet.context-path}/openapi/user.yaml
       - name: Programs
         url: ${server.servlet.context-path}/openapi/program.yaml
+      - name: Program templates
+        url: ${server.servlet.context-path}/openapi/program-template.yaml
     csrf:
       enabled: true

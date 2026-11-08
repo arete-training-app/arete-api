@@ -41,3 +41,16 @@ arete:
   program:
     calendar-max-days: 62
     max-parts-per-day: 20
+  program-template:
+    blocked-terms: ${PROGRAM_TEMPLATE_BLOCKED_TERMS:}
+    max-days: 366
+    range-max-days: 92
+    catalog:
+      directory: ${PROGRAM_TEMPLATE_CATALOG_DIRECTORY:./catalog}
+  import-job:
+    polling-enabled: ${IMPORT_JOB_POLLING_ENABLED:true}
+    poll-interval: ${IMPORT_JOB_POLL_INTERVAL:5s}
+    batch-size: 5
+    max-attempts: 5
+    retry-backoff: 30s
+    lease: 10m

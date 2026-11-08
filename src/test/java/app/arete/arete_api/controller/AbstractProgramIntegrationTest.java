@@ -2,6 +2,7 @@ package app.arete.arete_api.controller;
 
 import app.arete.arete_api.TestcontainersConfiguration;
 import app.arete.arete_api.util.Constants;
+import app.arete.arete_api.util.enums.RoleEnum;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +38,9 @@ abstract class AbstractProgramIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     protected long createProgramAndGetId(final Cookie accessCookie) throws Exception {
         final String body = createProgram(accessCookie, "Athlete").getContentAsString();
         return JsonPath.<Number>read(body, "$.id").longValue();
@@ -57,6 +62,29 @@ abstract class AbstractProgramIntegrationTest {
                 .content("""
                         {"fullName":"Jane Doe","email":"%s","password":"%s","confirmPassword":"%s"}
                         """.formatted(email, PASSWORD, PASSWORD)))
+                .getCookie(Constants.ACCESS_TOKEN_COOKIE);
+    }
+
+    /**
+     * Registers a user, grants the admin role in the database and logs in again, because roles are read from the
+     * token issued at login.
+     */
+    protected Cookie registerAdminAndGetAccessCookie() throws Exception {
+        final String email = "admin-" + UUID.randomUUID() + "@example.com";
+        perform(withCsrf(post("/auth/register"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"fullName":"Admin User","email":"%s","password":"%s","confirmPassword":"%s"}
+                        """.formatted(email, PASSWORD, PASSWORD)));
+        jdbcTemplate.update(
+                "INSERT INTO user_role (user_id, role) SELECT id, ? FROM users WHERE email = ?",
+                RoleEnum.ADMIN.name(),
+                email);
+        return perform(withCsrf(post("/auth/login"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"email":"%s","password":"%s"}
+                        """.formatted(email, PASSWORD)))
                 .getCookie(Constants.ACCESS_TOKEN_COOKIE);
     }
 
