@@ -16,13 +16,13 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
@@ -33,6 +33,17 @@ public class SecurityConfig {
     private static final String AUTHENTICATION_REQUIRED_DETAIL = "Authentication required";
     private static final String CSRF_DETAIL = "Missing or invalid CSRF token";
     private static final String ACCESS_DENIED_DETAIL = "Access denied";
+    private static final String CSRF_COOKIE_PATH = "/";
+
+    /**
+     * The SPA reads this cookie from {@code document.cookie} on its own pages, so it must be scoped to {@code /}.
+     * The default path is the servlet context path ({@code /api/v1}), which hides it from the app's pages.
+     */
+    private static CookieCsrfTokenRepository csrfTokenRepository() {
+        final CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie.path(CSRF_COOKIE_PATH));
+        return repository;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -40,7 +51,7 @@ public class SecurityConfig {
             final JwtService jwtService,
             @Qualifier("handlerExceptionResolver") final HandlerExceptionResolver handlerExceptionResolver) {
         http
-                .csrf(CsrfConfigurer::spa)
+                .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

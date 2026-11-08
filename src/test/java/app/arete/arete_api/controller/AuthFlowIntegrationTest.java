@@ -72,6 +72,7 @@ class AuthFlowIntegrationTest {
         final Cookie csrfCookie = response.getCookie(CSRF_COOKIE);
         assertThat(csrfCookie).isNotNull();
         assertThat(csrfCookie.isHttpOnly()).isFalse();
+        assertThat(csrfCookie.getPath()).isEqualTo("/");
     }
 
     @Test
