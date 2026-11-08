@@ -34,3 +34,8 @@ build/
 
 ### Local env ###
 dev/.env
+
+### Program template catalog folders (exported data) ###
+/dev/catalog/
+/catalog/
+.env

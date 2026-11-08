@@ -23,6 +23,7 @@ import app.arete.arete_api.util.Constants;
 import app.arete.arete_api.util.enums.AuthProvider;
 import app.arete.arete_api.util.enums.RoleEnum;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.EnumSet;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -63,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
                 email,
                 passwordEncoder.encode(registerUserRequestDto.getPassword()),
                 EnumSet.of(RoleEnum.USER)));
+        log.info("User {} registered with a password", user.getId());
         return new RegistrationResult(userMapper.toUserResponseDto(user), issueTokens(user));
     }
 
@@ -75,11 +78,13 @@ public class AuthServiceImpl implements AuthService {
                     normalizeEmail(userLoginRequestDto.getEmail()),
                     userLoginRequestDto.getPassword()));
         } catch (final AuthenticationException exception) {
+            log.warn("Password login failed: {}", exception.getClass().getSimpleName());
             throw new UnauthorizedException(Constants.INVALID_CREDENTIALS_DETAIL);
         }
         if (!(authentication.getPrincipal() instanceof UserPrincipal(User user))) {
             throw new IllegalStateException("Password login must authenticate a UserPrincipal");
         }
+        log.info("User {} logged in with a password", user.getId());
         return issueTokens(user);
     }
 
@@ -91,17 +96,21 @@ public class AuthServiceImpl implements AuthService {
                 .findByProviderAndProviderSubjectWithUser(AuthProvider.GOOGLE, googleIdentity.subject())
                 .map(UserIdentity::getUser)
                 .orElseGet(() -> linkOrCreateGoogleUser(googleIdentity));
+        log.info("User {} logged in with Google", user.getId());
         return issueTokens(user);
     }
 
     @Override
     public AuthTokens refresh(final String refreshToken) {
-        return refreshTokenService.rotateRefreshToken(refreshToken);
+        final AuthTokens authTokens = refreshTokenService.rotateRefreshToken(refreshToken);
+        log.debug("Session refreshed");
+        return authTokens;
     }
 
     @Override
     public void logout(final String refreshToken) {
         refreshTokenService.revokeRefreshTokenFamily(refreshToken);
+        log.info("Logged out; the session's refresh tokens are revoked");
     }
 
     private User linkOrCreateGoogleUser(final GoogleIdentity googleIdentity) {
@@ -112,8 +121,11 @@ public class AuthServiceImpl implements AuthService {
         final User user = userRepository.findByEmail(email)
                 .map(this::prepareExistingUserForGoogleLink)
                 .orElseGet(() -> userMapper.toUser(googleIdentity, email, EnumSet.of(RoleEnum.USER)));
+        final boolean newUser = user.getId() == null;
         user.addIdentity(userMapper.toUserIdentity(googleIdentity, AuthProvider.GOOGLE));
-        return userRepository.save(user);
+        final User savedUser = userRepository.save(user);
+        log.info(newUser ? "User {} registered with Google" : "User {} linked a Google account", savedUser.getId());
+        return savedUser;
     }
 
     private User prepareExistingUserForGoogleLink(final User existingUser) {

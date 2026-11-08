@@ -8,12 +8,14 @@ import app.arete.arete_api.model.entity.User;
 import app.arete.arete_api.repository.UserRepository;
 import app.arete.arete_api.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -38,7 +40,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponseDto getMe() {
-        return userMapper.toUserResponseDto(getAuthenticatedUser());
+        final User user = getAuthenticatedUser();
+        log.debug("Getting profile of user {}", user.getId());
+        return userMapper.toUserResponseDto(user);
     }
 
     @Override
@@ -46,7 +50,9 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto updateMe(final UpdateUserRequestDto updateUserRequestDto) {
         final User user = getAuthenticatedUser();
         userMapper.updateUserFromDto(updateUserRequestDto, user);
-        return userMapper.toUserResponseDto(userRepository.save(user));
+        final User savedUser = userRepository.save(user);
+        log.info("User {} updated their profile", savedUser.getId());
+        return userMapper.toUserResponseDto(savedUser);
     }
 
     private static Long parseUserId(final String subject) {

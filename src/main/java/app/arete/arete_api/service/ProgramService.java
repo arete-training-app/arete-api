@@ -1,5 +1,6 @@
 package app.arete.arete_api.service;
 
+import app.arete.arete_api.api.model.ProgramFromTemplateRequestDto;
 import app.arete.arete_api.api.model.ProgramPageResponseDto;
 import app.arete.arete_api.api.model.ProgramRequestDto;
 import app.arete.arete_api.api.model.ProgramResponseDto;
@@ -60,6 +61,21 @@ public interface ProgramService {
      * @return the created program
      */
     ProgramResponseDto createUserProgram(final ProgramRequestDto programRequestDto);
+
+    /**
+     * Creates a program owned by the caller from a template, copying every covered day and its parts as planned
+     * work without feedback. Position 1 lands in the requested start week, on the same weekday as in the template's
+     * source, and every other day keeps its distance from it: every workout keeps its weekday, and positions
+     * without a day stay empty. Without a description, the template's is used.
+     *
+     * @param programTemplateId             the template to copy
+     * @param programFromTemplateRequestDto the program's name, optional description and start week
+     * @return the created program
+     * @throws NotFoundException if the template doesn't exist
+     */
+    ProgramResponseDto createUserProgramFromTemplate(
+            final Long programTemplateId,
+            final ProgramFromTemplateRequestDto programFromTemplateRequestDto);
 
     /**
      * Replaces the name and description of one of the caller's programs. Its days are left unchanged.

@@ -10,7 +10,8 @@ import app.arete.arete_api.api.model.ProgramDaySortFieldDto;
 import app.arete.arete_api.model.dto.program.ProgramDayFilterDto;
 import app.arete.arete_api.model.entity.Program;
 import app.arete.arete_api.model.entity.ProgramDay;
-import app.arete.arete_api.model.entity.WorkoutPart;
+import app.arete.arete_api.model.entity.ProgramTemplatePart;
+import app.arete.arete_api.model.entity.ProgramPart;
 import app.arete.arete_api.util.enums.DayStatus;
 import app.arete.arete_api.util.enums.ProgramDaySortField;
 import org.mapstruct.BeanMapping;
@@ -24,7 +25,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
-@Mapper(config = CentralMapperConfig.class, uses = WorkoutPartMapper.class)
+@Mapper(config = CentralMapperConfig.class, uses = ProgramPartMapper.class)
 public interface ProgramDayMapper {
 
     @Mapping(target = "date", source = "dayDate")
@@ -61,9 +62,22 @@ public interface ProgramDayMapper {
     @Mapping(target = "orderIndex", ignore = true)
     @Mapping(target = "completed", ignore = true)
     @Mapping(target = "resultNotes", ignore = true)
-    WorkoutPart copyWorkoutPart(final WorkoutPart workoutPart);
+    ProgramPart copyProgramPart(final ProgramPart programPart);
 
-    List<WorkoutPart> copyWorkoutParts(final Collection<WorkoutPart> workoutParts);
+    List<ProgramPart> copyProgramParts(final Collection<ProgramPart> programParts);
+
+    /**
+     * A template part as a planned program part, without feedback. The order is assigned by
+     * {@link ProgramDay#appendParts}.
+     */
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "programDay", ignore = true)
+    @Mapping(target = "orderIndex", ignore = true)
+    @Mapping(target = "completed", ignore = true)
+    @Mapping(target = "resultNotes", ignore = true)
+    ProgramPart toProgramPart(final ProgramTemplatePart programTemplatePart);
+
+    List<ProgramPart> toProgramParts(final Collection<ProgramTemplatePart> programTemplateParts);
 
     @BeanMapping(nullValueMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
     ProgramDayFilterDto toProgramDayFilterDto(final LocalDate from, final LocalDate to, final DayStatusDto status);

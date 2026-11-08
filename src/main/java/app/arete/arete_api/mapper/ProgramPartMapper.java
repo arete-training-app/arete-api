@@ -1,15 +1,15 @@
 package app.arete.arete_api.mapper;
 
-import app.arete.arete_api.api.model.WorkoutPartRequestDto;
-import app.arete.arete_api.api.model.WorkoutPartResponseDto;
-import app.arete.arete_api.model.entity.WorkoutPart;
+import app.arete.arete_api.api.model.ProgramPartRequestDto;
+import app.arete.arete_api.api.model.ProgramPartResponseDto;
+import app.arete.arete_api.model.entity.ProgramPart;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 @Mapper(config = CentralMapperConfig.class)
-public interface WorkoutPartMapper {
+public interface ProgramPartMapper {
 
-    WorkoutPartResponseDto toWorkoutPartResponseDto(final WorkoutPart workoutPart);
+    ProgramPartResponseDto toProgramPartResponseDto(final ProgramPart programPart);
 
     /**
      * The order is assigned by {@code ProgramDay#addPart}, and a new part starts without feedback.
@@ -19,5 +19,5 @@ public interface WorkoutPartMapper {
     @Mapping(target = "orderIndex", ignore = true)
     @Mapping(target = "completed", ignore = true)
     @Mapping(target = "resultNotes", ignore = true)
-    WorkoutPart toWorkoutPart(final WorkoutPartRequestDto workoutPartRequestDto);
+    ProgramPart toProgramPart(final ProgramPartRequestDto programPartRequestDto);
 }

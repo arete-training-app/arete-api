@@ -2,7 +2,7 @@ package app.arete.arete_api.security;
 
 import app.arete.arete_api.exception.UnauthorizedException;
 import app.arete.arete_api.util.Constants;
-import app.arete.arete_api.util.enums.Endpoints;
+import app.arete.arete_api.util.enums.PublicEndpoints;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(final HttpServletRequest request) {
-        return Endpoints.isPublic(request.getServletPath());
+        return PublicEndpoints.isPublic(request.getServletPath());
     }
 
     @Override

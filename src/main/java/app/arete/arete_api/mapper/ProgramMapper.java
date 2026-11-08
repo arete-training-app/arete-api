@@ -1,5 +1,6 @@
 package app.arete.arete_api.mapper;
 
+import app.arete.arete_api.api.model.ProgramFromTemplateRequestDto;
 import app.arete.arete_api.api.model.ProgramPageResponseDto;
 import app.arete.arete_api.api.model.ProgramRequestDto;
 import app.arete.arete_api.api.model.ProgramResponseDto;
@@ -35,6 +36,18 @@ public interface ProgramMapper {
     @Mapping(target = "description", source = "programRequestDto.description")
     @Mapping(target = "owner", source = "owner")
     Program toProgram(final ProgramRequestDto programRequestDto, final User owner);
+
+    /**
+     * The description is passed separately because the service falls back to the template's.
+     */
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "name", source = "programFromTemplateRequestDto.name")
+    @Mapping(target = "description", source = "description")
+    @Mapping(target = "owner", source = "owner")
+    Program toProgram(
+            final ProgramFromTemplateRequestDto programFromTemplateRequestDto,
+            final String description,
+            final User owner);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)

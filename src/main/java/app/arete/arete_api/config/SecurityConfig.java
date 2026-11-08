@@ -4,7 +4,9 @@ import app.arete.arete_api.exception.ForbiddenException;
 import app.arete.arete_api.exception.UnauthorizedException;
 import app.arete.arete_api.security.JwtAuthenticationFilter;
 import app.arete.arete_api.security.JwtService;
-import app.arete.arete_api.util.enums.Endpoints;
+import app.arete.arete_api.util.enums.AdminEndpoints;
+import app.arete.arete_api.util.enums.PublicEndpoints;
+import app.arete.arete_api.util.enums.RoleEnum;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,7 +47,8 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(Endpoints.patterns()).permitAll()
+                        .requestMatchers(PublicEndpoints.patterns()).permitAll()
+                        .requestMatchers(AdminEndpoints.patterns()).hasRole(RoleEnum.ADMIN.getValue())
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->

@@ -27,12 +27,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFoundException(final NotFoundException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        return warn(HttpStatus.NOT_FOUND, exception);
     }
 
     @ExceptionHandler(ConflictException.class)
     public ProblemDetail handleConflictException(final ConflictException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        return warn(HttpStatus.CONFLICT, exception);
     }
 
     @ExceptionHandler({
@@ -41,22 +41,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             ConstraintViolationException.class
     })
     public ProblemDetail handleBadRequestException(final Exception exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        return warn(HttpStatus.BAD_REQUEST, exception);
     }
 
+    /**
+     * Logged at debug only: an expired access token ends in a 401 on every refresh cycle of a normal session.
+     */
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
     public ProblemDetail handleUnauthorizedException(final Exception exception) {
+        log.debug("{}: {}", HttpStatus.UNAUTHORIZED, exception.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, exception.getMessage());
     }
 
     @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
     public ProblemDetail handleForbiddenException(final Exception exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
+        return warn(HttpStatus.FORBIDDEN, exception);
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
     public ProblemDetail handleTooManyRequestsException(final TooManyRequestsException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage());
+        return warn(HttpStatus.TOO_MANY_REQUESTS, exception);
     }
 
     @ExceptionHandler(Exception.class)
@@ -76,9 +80,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         FieldError::getField,
                         fieldError -> String.valueOf(fieldError.getDefaultMessage()),
                         (first, second) -> first));
+        log.warn("{}: {} {}", HttpStatus.BAD_REQUEST, Constants.VALIDATION_FAILED_DETAIL, errorsByField);
         final ProblemDetail problemDetail =
                 ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, Constants.VALIDATION_FAILED_DETAIL);
         problemDetail.setProperty(Constants.ERRORS_PROPERTY, errorsByField);
         return ResponseEntity.badRequest().body(problemDetail);
+    }
+
+    /**
+     * Client errors are logged without a stack trace: the cause is in the request, not in the code.
+     */
+    private static ProblemDetail warn(final HttpStatus status, final Exception exception) {
+        log.warn("{}: {}", status, exception.getMessage());
+        return ProblemDetail.forStatusAndDetail(status, exception.getMessage());
     }
 }
