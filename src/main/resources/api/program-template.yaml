@@ -377,6 +377,16 @@ components:
           example: 80
         latestImportJob:
           $ref: '#/components/schemas/ProgramTemplateImportJobResponse'
+        importedProgramTemplateId:
+          type: integer
+          format: int64
+          description: >
+            The template that holds exactly this entry's current days, if one exists now. It is worked out from the
+            day files on every request, with the same content hash the import uses, so it disappears once that
+            template is deleted or the files change. It is also absent when the files can't be read; an import
+            would then fail and say why. Unlike `latestImportJob.programTemplateId`, which records what a past
+            import created, this says what is there now.
+          example: 7
 
     ProgramTemplateCatalogPageResponse:
       type: object

@@ -14,8 +14,11 @@ import app.arete.arete_api.model.dto.importjob.ImportJobFilterDto;
 import app.arete.arete_api.model.dto.programtemplate.ProgramTemplateCatalogEntry;
 import app.arete.arete_api.model.dto.programtemplate.ProgramTemplateImportJobFilterDto;
 import app.arete.arete_api.model.entity.ImportJob;
+import app.arete.arete_api.model.entity.ProgramTemplate;
 import app.arete.arete_api.programtemplate.ProgramTemplateCatalog;
+import app.arete.arete_api.programtemplate.ProgramTemplateCatalogHasher;
 import app.arete.arete_api.repository.ImportJobRepository;
+import app.arete.arete_api.repository.ProgramTemplateRepository;
 import app.arete.arete_api.service.ImportJobService;
 import app.arete.arete_api.service.ProgramTemplateImportJobService;
 import app.arete.arete_api.specification.ImportJobSpecifications;
@@ -30,8 +33,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -42,6 +50,8 @@ public class ProgramTemplateImportJobServiceImpl implements ProgramTemplateImpor
     private static final String CATALOG_ENTRY_NOT_FOUND_DETAIL = "Catalog entry not found";
 
     private final ProgramTemplateCatalog programTemplateCatalog;
+    private final ProgramTemplateCatalogHasher programTemplateCatalogHasher;
+    private final ProgramTemplateRepository programTemplateRepository;
     private final ImportJobRepository importJobRepository;
     private final ImportJobSpecifications importJobSpecifications;
     private final ProgramTemplateImportJobMapper programTemplateImportJobMapper;
@@ -50,7 +60,8 @@ public class ProgramTemplateImportJobServiceImpl implements ProgramTemplateImpor
 
     /**
      * The catalog is a folder listing, so it is filtered and paged in memory; it holds tens of entries, not
-     * thousands.
+     * thousands. Each entry on the page is hashed like an import would hash it, and one query finds the templates
+     * that already hold those days, so the response says what exists now rather than what a past job created.
      */
     @Override
     @Transactional(readOnly = true)
@@ -66,11 +77,22 @@ public class ProgramTemplateImportJobServiceImpl implements ProgramTemplateImpor
         final Pageable pageable = PageRequest.of(page, size);
         final int fromIndex = (int) Math.min(pageable.getOffset(), entries.size());
         final int toIndex = Math.min(fromIndex + size, entries.size());
-        final List<ProgramTemplateCatalogEntryResponseDto> pageContent = entries.subList(fromIndex, toIndex).stream()
+        final List<ProgramTemplateCatalogEntry> pageEntries = entries.subList(fromIndex, toIndex);
+        final Map<String, String> contentHashByEntry = new HashMap<>();
+        pageEntries.forEach(entry -> programTemplateCatalogHasher.contentHash(entry.name())
+                .ifPresent(contentHash -> contentHashByEntry.put(entry.name(), contentHash)));
+        final Map<String, Long> templateIdByContentHash = contentHashByEntry.isEmpty()
+                ? Map.of()
+                : programTemplateRepository.findAllByContentHashIn(Set.copyOf(contentHashByEntry.values())).stream()
+                        .collect(Collectors.toMap(ProgramTemplate::getContentHash, ProgramTemplate::getId));
+        final List<ProgramTemplateCatalogEntryResponseDto> pageContent = pageEntries.stream()
                 .map(entry -> programTemplateImportJobMapper.toProgramTemplateCatalogEntryResponseDto(
                         entry,
                         importJobRepository
                                 .findFirstByTypeAndCatalogEntryOrderByIdDesc(ImportJobType.PROGRAM_TEMPLATE, entry.name())
+                                .orElse(null),
+                        Optional.ofNullable(contentHashByEntry.get(entry.name()))
+                                .map(templateIdByContentHash::get)
                                 .orElse(null)))
                 .toList();
         return programTemplateImportJobMapper.toProgramTemplateCatalogPageResponseDto(
