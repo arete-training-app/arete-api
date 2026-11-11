@@ -37,14 +37,17 @@ public interface ProgramTemplateImportJobMapper {
     ImportJobSortField toImportJobSortField(final ProgramTemplateImportJobSortFieldDto sortFieldDto);
 
     /**
-     * @param latestImportJob the entry's most recent job, or {@code null} if it was never imported
+     * @param latestImportJob           the entry's most recent job, or {@code null} if it was never imported
+     * @param importedProgramTemplateId the template holding exactly the entry's current days, or {@code null}
      */
     @Mapping(target = "name", source = "catalogEntry.name")
     @Mapping(target = "dayFileCount", source = "catalogEntry.dayFileCount")
     @Mapping(target = "latestImportJob", source = "latestImportJob")
+    @Mapping(target = "importedProgramTemplateId", source = "importedProgramTemplateId")
     ProgramTemplateCatalogEntryResponseDto toProgramTemplateCatalogEntryResponseDto(
             final ProgramTemplateCatalogEntry catalogEntry,
-            final ImportJob latestImportJob);
+            final ImportJob latestImportJob,
+            final Long importedProgramTemplateId);
 
     @Mapping(target = "page", source = "number")
     ProgramTemplateCatalogPageResponseDto toProgramTemplateCatalogPageResponseDto(

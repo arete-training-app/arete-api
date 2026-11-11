@@ -256,6 +256,59 @@ class ProgramTemplateIntegrationTest extends AbstractProgramIntegrationTest {
     }
 
     @Test
+    void theCatalogSaysWhichTemplateHoldsAnEntrysCurrentDaysNowNotWhatAPastJobCreated() throws Exception {
+        final String entry = entry("Live");
+        catalog.writeDays(entry, marker, 0, 1);
+
+        final Map<String, Object> beforeImport = catalogEntry(entry);
+        final long templateId = importAndGetTemplateId(entry);
+        final Map<String, Object> afterImport = catalogEntry(entry);
+        perform(withCsrf(delete("/admin/program-templates/" + templateId)).cookie(admin));
+        final Map<String, Object> afterDelete = catalogEntry(entry);
+        final long reimportedId = importAndGetTemplateId(entry);
+        final Map<String, Object> afterReimport = catalogEntry(entry);
+
+        assertThat(beforeImport.get("importedProgramTemplateId")).isNull();
+        assertThat(((Number) afterImport.get("importedProgramTemplateId")).longValue()).isEqualTo(templateId);
+        assertThat(afterDelete.get("importedProgramTemplateId")).isNull();
+        assertThat(JsonPath.<String>read(afterDelete, "$.latestImportJob.status")).isEqualTo("COMPLETED");
+        assertThat(JsonPath.<Number>read(afterDelete, "$.latestImportJob.programTemplateId").longValue())
+                .isEqualTo(templateId);
+        assertThat(((Number) afterReimport.get("importedProgramTemplateId")).longValue())
+                .isEqualTo(reimportedId)
+                .isNotEqualTo(templateId);
+    }
+
+    @Test
+    void theCatalogFollowsAnEntrysFilesAndMatchesTheSameDaysUnderAnotherEntry() throws Exception {
+        final String original = entry("Matched");
+        final String copy = entry("Matched Copy");
+        catalog.writeDays(original, marker, 0, 2);
+        catalog.writeDays(copy, marker, 0, 2);
+        final long templateId = importAndGetTemplateId(original);
+
+        final Map<String, Object> copyEntry = catalogEntry(copy);
+        catalog.writeDays(original, marker + " changed", 5);
+        final Map<String, Object> changedOriginal = catalogEntry(original);
+
+        assertThat(((Number) copyEntry.get("importedProgramTemplateId")).longValue()).isEqualTo(templateId);
+        assertThat(copyEntry.get("latestImportJob")).isNull();
+        assertThat(changedOriginal.get("importedProgramTemplateId")).isNull();
+    }
+
+    @Test
+    void anEntryWhoseFilesCantBeReadIsStillListedWithoutATemplate() throws Exception {
+        final String entry = entry("Unreadable");
+        catalog.writeDays(entry, marker, 0);
+        catalog.writeFile(entry, "broken.json", "{ not json");
+
+        final Map<String, Object> listed = catalogEntry(entry);
+
+        assertThat(listed.get("name")).isEqualTo(entry);
+        assertThat(listed.get("importedProgramTemplateId")).isNull();
+    }
+
+    @Test
     void filesInSubfoldersOfAnEntryAreIgnored() throws Exception {
         final String entry = entry("Nested");
         catalog.writeDays(entry, marker, 10, 11);
@@ -561,6 +614,13 @@ class ProgramTemplateIntegrationTest extends AbstractProgramIntegrationTest {
 
     private MockHttpServletResponse listCatalog(final String... paramNamesAndValues) throws Exception {
         return perform(withParams(get(CATALOG_PATH).cookie(admin), paramNamesAndValues));
+    }
+
+    private Map<String, Object> catalogEntry(final String entry) throws Exception {
+        final List<Map<String, Object>> matches = JsonPath.read(
+                listCatalog("name", entry).getContentAsString(), "$.content[?(@.name == '%s')]".formatted(entry));
+        assertThat(matches).hasSize(1);
+        return matches.getFirst();
     }
 
     private MockHttpServletResponse createProgramFromTemplate(final long templateId, final String body)
